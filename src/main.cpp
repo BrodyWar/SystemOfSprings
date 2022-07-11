@@ -7,8 +7,11 @@
 #include <valarray>
 
 
-double m1 = 2, m2 = 2;
-double l = 100.0;
+const double m1 = 2, m2 = 2;
+const double l = 100.0;
+
+const int PARAM = 5;
+const int COUNT = 20;
 
 double eps[6] = {0.01, -0.01, 0.02, -0.02, 0.015, -0.015};
 
@@ -122,35 +125,55 @@ void fft(CArray& x)
 
 void updateSystem(std::vector<Body> body, double** dxdp, double** ndxdp, coeff _c)
 {
-	double dFdp[4][8] =
+	/*double dFdp[4][8] =
 	{
 	{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},
 	{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},
 	{0.0,0.0,0.0,0.0,dv1dk1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv1dk2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv1db1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv1db2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2)},
 	{0.0,0.0,0.0,0.0,dv2dk1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv2dk2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv2db1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv2db2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2)}
+	};*/
+
+
+	double dFdp[4][PARAM] =
+	{
+	{0.0,0.0,0.0,0.0,0.0},
+	{0.0,0.0,0.0,0.0,0.0},
+	{0.0,0.0,0.0,0.0,dv1dk1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2)},
+	{0.0,0.0,0.0,0.0,dv2dk1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2)}
 	};
 
 	double dFdX[4][4] =
 	{
-		{0.0,0.0,1.0,0.0},
-		{0.0,0.0,0.0,1.0},
+		{0,0,1,0},
+		{0,0,0,1},
 		{dv1dx1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv1dx2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv1dv1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv1dv2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2)},
 		{dv2dx1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv2dx2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv2dv1(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2),dv2dv2(body[0].x, body[1].x, body[0].v, body[1].v, _c.k1, _c.k2, _c.b1, _c.b2)}
 	};
 	double** c = new double* [4];
 	for (int i = 0; i < 4; i++) {
-		c[i] = new double[8];
-		for (int j = 0; j < 8; j++) {
+		c[i] = new double[PARAM];
+		for (int j = 0; j < PARAM; j++) {
 			c[i][j] = 0;
 			for (int k = 0; k < 4; k++)
 				c[i][j] += dFdX[i][k] * dxdp[k][j];
 		}
 	}
 	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 8; j++) {
+		for (int j = 0; j < PARAM; j++) {
 			ndxdp[i][j] = dFdp[i][j] + c[i][j];
 		}
 	}
+
+	//for (int i = 0; i < 4; i++) {
+	//	for (int j = 0; j < 5; ++j)
+	//		std::cout << dFdp[i][j] << ' ';
+	//	std::cout << "\t\t";
+	//	for (int j = 0; j < 5; ++j)
+	//		std::cout << dxdp[i][j] << ' ';
+	//	std::cout << '\n';
+	//}
+	//std::cout << _c.k1 << '\n';
+	//std::cout << '\n';
 
 }
 
@@ -164,196 +187,286 @@ double** interpolate(double t, std::vector<std::pair<double,double**>> deriv) {
 
 			double** X = new double* [4];
 			for (int k = 0; k < 4; k++) {
-				X[k] = new double[8];
-				for (int h = 0; h < 8; h++)
+				X[k] = new double[PARAM];
+				for (int h = 0; h < PARAM; h++)
 					X[k][h] = 0;
 			}
 
 
 			for (int j = 0; j < 4; j++)
 			{
-				for (int k = 0; k < 8; k++)
+				for (int k = 0; k < PARAM; k++)
 					X[j][k] = Xt0[j][k] + (Xt1[j][k] - Xt0[j][k]) * ((t - deriv[i].first) / (deriv[i + 1].first - deriv[i].first));
 			}
+
 			return X;
 		}
 	}
 }
 
-double** inversion(double** A, int n, int m)
-{
-	double temp;
-
-	double** E = new double*[n];
-	for (int i = 0; i < n; i++)
-	{
-		E[i] = new double[m];
-		for (int j = 0; j < m; ++j)
-			E[i][j] = 0;
-	}
-
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < m; j++)
-		{
-			E[i][j] = 0.0;
-
-			if (i == j)
-				E[i][j] = 1.0;
-		}
-
-	for (int k = 0; k < n; k++)
-	{
-		temp = A[k][k];
-
-		for (int j = 0; j < m; j++)
-		{
-			A[k][j] /= temp;
-			E[k][j] /= temp;
-		}
-
-		for (int i = k + 1; i < m; i++)
-		{
-			temp = A[i][k];
-
-			for (int j = 0; j < m; j++)
-			{
-				A[i][j] -= A[k][j] * temp;
-				E[i][j] -= E[k][j] * temp;
-			}
-		}
-	}
-
-	for (int k = m - 1; k > 0; k--)
-	{
-		for (int i = k - 1; i >= 0; i--)
-		{
-			temp = A[i][k];
-
-			for (int j = 0; j < n; j++)
-			{
-				A[i][j] -= A[k][j] * temp;
-				E[i][j] -= E[k][j] * temp;
-			}
-		}
-	}
-
-	for (int i = 0; i < m; i++)
-		for (int j = 0; j < n; j++)
-			A[i][j] = E[i][j];
-
-	return A;
-}
 
 
 void GaussNewthon(std::vector<Body> body, std::vector<std::pair<double, double**>> deriv, std::vector<double> &B) {
-	double** beta = new double* [8];
+	double* beta = new double[PARAM];
+
+	//if (deriv[0].second[0][0] != deriv[0].second[0][0]) std::cout << "Second!!!\n";
 	{
-		for (int i = 0; i < 8; i++)
-			beta[i] = new double[1];
-		beta[2][0] = B[2];
-		beta[3][0] = B[3];
-		beta[0][0] = B[0];
-		beta[1][0] = B[1];
-		beta[4][0] = B[4];
-		beta[5][0] = B[5];
-		beta[6][0] = B[6];
-		beta[7][0] = B[7];
+		for (int i = 0; i < PARAM; i++)
+		beta[2] = B[2];
+		beta[3] = B[3];
+		beta[0] = B[0];
+		beta[1] = B[1];
+		beta[4] = B[4];
+		//beta[5] = B[5];
+		//beta[6] = B[6];
+		//beta[7] = B[7];
 	}
 	B.clear();
 
-	double** A = new double* [40];
-	double** W = new double* [40];
+	double** A = new double* [COUNT];
+	double** W = new double* [COUNT];
 
-	double* r = new double[40];
+	double* r = new double[COUNT];
 
-	for (int i = 0; i < 40; i++) {
+	for (int i = 0; i < COUNT; i++) {
 		r[i] = eps[rand() % 6];
 	}
 
-	for (int i = 0; i < 40; i++)
+	for (int i = 0; i < COUNT; i++)
 	{
-		A[i] = new double[8];
-		for (int j = 0; j < 8; ++j)
+		A[i] = new double[PARAM];
+		for (int j = 0; j < PARAM; ++j)
 			A[i][j] = 0;
 	}
-	for (int i = 0; i < 40; ++i){
-		W[i] = new double[40];
-		for (int j = 0; j < 40; ++j)
+	for (int i = 0; i < COUNT; ++i){
+		W[i] = new double[COUNT];
+		for (int j = 0; j <  COUNT; ++j)
 		{
 			W[i][j] = 0;
-			if (i == j) W[i][j] = 1;
 		}
 	}
+
+	for (int i = 0; i < COUNT; ++i)
+		W[i][i] = 1;
 	int it = 0;
-	for (int i = 0; i < 40; i++)
+	for (int i = 0; i <COUNT; i++)
 	{
-		double** tmp = interpolate(deriv[it%20].first, deriv);
-		for (int j = 0; j < 8; ++j)
+		double** tmp = interpolate(deriv[it].first, deriv);
+		for (int j = 0; j < PARAM; ++j)
 		{
 			A[i][j] = tmp[i%4][j];
 		}
 		it++;
+
+		//if (tmp[0][0] != tmp[0][0]) {
+		//	for (int k = 0; k < 20; ++k) {
+		//		for (int i = 0; i < 4; ++i) {
+		//			for (int j = 0; j < 5; ++j)
+		//				std::cout << deriv[k].second[i][j] << " ";
+		//			std::cout << '\n';
+		//		}
+		//		std::cout << '\n';
+		//	}
+		//}
 	}
-	double** At = new double* [8];
-	for (int i = 0; i < 8; i++)
+	double** At = new double* [PARAM];
+	for (int i = 0; i < PARAM; i++)
 	{
-		At[i] = new double[40];
-		for (int j = 0; j < 40; ++j)
+		At[i] = new double[COUNT];
+		for (int j = 0; j < COUNT; ++j)
 			At[i][j] = A[j][i];
 	}
 
-	double** AtW = new double* [8];
-	for (int i = 0; i < 8; i++) {
-		AtW[i] = new double[40];
-		for (int j = 0; j < 40; j++) {
+	double** AtW = new double* [PARAM];
+
+	for (int i = 0; i < PARAM; i++) {
+		AtW[i] = new double[ COUNT];
+		for (int j = 0; j <  COUNT; ++j)
 			AtW[i][j] = 0;
-			for (int k = 0; k < 40; k++)
+	}
+	for (int i = 0; i < PARAM; i++) {
+		for (int j = 0; j < COUNT; j++) {
+			for (int k = 0; k < COUNT; k++)
 				AtW[i][j] += At[i][k] * W[k][j];
 		}
+
 	}
 
-	double** AtWA = new double* [8];
-	for (int i = 0; i < 8; i++) {
-		AtWA[i] = new double[8];
-		for (int j = 0; j < 8; j++) {
+	double** AtWA = new double* [PARAM];
+	for (int i = 0; i < PARAM; i++) {
+		AtWA[i] = new double[PARAM];
+		for (int j = 0; j < PARAM; j++) {
 			AtWA[i][j] = 0;
-			for (int k = 0; k < 40; ++k)
+			for (int k = 0; k < COUNT; ++k)
 				AtWA[i][j] += AtW[i][k] * A[k][j];
 		}
 	}
+	//double **n_AtWA = inversion(AtWA, PARAM, PARAM);
 
-	AtWA = inversion(AtWA, 8, 8);
-
-	double** rB = new double* [40];
-	for (int i = 0; i < 40; ++i) {
+	double** rB = new double* [COUNT];
+	for (int i = 0; i < COUNT; ++i) {
 		rB[i] = new double[1];
 		rB[i][0] = r[i];
 	}
 
-	double** AtWrB = new double* [8];
-	for (int i = 0; i < 8; i++) {
-		AtWrB[i] = new double[1];
-		AtWrB[i][0] = 0;
-		for (int k = 0; k < 40; k++)
-			AtWrB[i][0] += AtW[i][k] * rB[k][0];
+	double* AtWrB = new double[PARAM];
+
+	for (int i = 0; i < PARAM; i++) {
+		AtWrB[i] = 0;
+		for (int k = 0; k < COUNT; k++) {
+			AtWrB[i] += AtW[i][k] * rB[k][0];
+		}
+	}
+	//for (int i = 0; i < PARAM; ++i) {
+	//	for (int j = 0; j < PARAM; ++j)
+	//		std::cout << AtWA[i][j] << ' ';
+	//	std::cout << '\n';
+	//}
+	//std::cout << '\n';
+
+
+	double** L = new double* [PARAM];
+	double** Lt = new double* [PARAM];
+	for (int i = 0; i < PARAM; ++i) {
+		L[i] = new double[PARAM];
+		for (int j = 0; j < PARAM; ++j)
+			L[i][j] = 0;
+	}
+	L[0][0] = std::sqrt(AtWA[0][0]);
+	for (int j = 1; j < PARAM; ++j)
+		L[j][0] = AtWA[j][0] / L[0][0];
+	
+	L[1][1] = std::sqrt(AtWA[1][1] - std::pow(L[1][0], 2));
+	for (int i = 1; i < PARAM - 1; ++i) {
+		{
+			double sum = 0;
+			for (int p = 0; p <= i - 1; ++p) {
+				sum += std::pow(L[i][p], 2);
+			}
+			L[i][i] = std::sqrt(AtWA[i][i] - sum);
+		}
+
+		for (int j = i + 1; j < PARAM; ++j) {
+			double sum = 0;
+			for (int p = 0; p <= i - 1; ++p) {
+				sum += L[i][p] * L[j][p];
+			}
+			L[j][i] = 1.0 / L[i][i] * (AtWA[j][i] - sum);
+		}
+	}
+	double sum = 0;
+	for (int p = 0; p < PARAM-1; ++p)
+		sum += std::pow(L[PARAM-1][p], 2);
+	L[PARAM - 1][PARAM - 1] = std::sqrt(AtWA[PARAM - 1][PARAM - 1] - sum);
+
+
+	for (int i = 0; i < PARAM; i++)
+	{
+		Lt[i] = new double[PARAM];
+		for (int j = 0; j < PARAM; ++j)
+			Lt[i][j] = L[j][i];
 	}
 
-	double** mTmp = new double* [8];
-	for (int i = 0; i < 8; i++) {
+	double* y = new double[PARAM];
+	double* x = new double[PARAM];
+
+	for (int i = 0; i < PARAM; ++i) {
+		double sum = 0;
+		for (int k = 0; k < i; ++k)
+			sum += L[i][k] * y[k];
+		y[i] = 1.0 / L[i][i] * (AtWrB[i] - sum);
+	}
+
+	for (int i = PARAM-1; i >=0; i--) {
+		double sum = 0;
+		for (int k = i + 1; k < PARAM; ++k)
+			sum += Lt[i][k] * x[k];
+		x[i] = y[i] - sum;
+	}
+
+	for (int i = 0; i < PARAM; ++i)
+		B.push_back(beta[i] + x[i]);
+
+
+	if (B[0] != B[0])
+	{
+		char a = 'a';
+	}
+
+	//double** LLt = new double* [PARAM];
+
+	//for (int i = 0; i < PARAM; i++) {
+	//	LLt[i] = new double[PARAM];
+	//	for (int j = 0; j < PARAM; ++j)
+	//		LLt[i][j] = 0;
+	//}
+	//for (int i = 0; i < PARAM; i++) {
+	//	for (int j = 0; j < PARAM; j++) {
+	//		for (int k = 0; k < PARAM; k++)
+	//			LLt[i][j] += L[i][k] * Lt[k][j];
+	//	}
+
+	//}
+
+	//for (int i = 0; i < PARAM; ++i) {
+	//	for (int j = 0; j < PARAM; ++j)
+	//		std::cout << L[i][j] << ' ';
+	//	std::cout << '\t';
+	//	for (int j = 0; j < PARAM; ++j)
+	//		std::cout << Lt[i][j] << ' ';
+	//	std::cout << '\t';
+	//	for (int j = 0; j < PARAM; ++j)
+	//		std::cout << LLt[i][j] << ' ';
+	//	std::cout << '\n';
+	//}
+	//std::cout << '\n';
+	/*double** mTmp = new double* [PARAM];
+	for (int i = 0; i < PARAM; i++) {
 		mTmp[i] = new double[1];
 		mTmp[i][0] = 0;
-		for (int k = 0; k < 8; k++)
-			mTmp[i][0] += AtWA[i][k] * AtWrB[k][0];
+		for (int k = 0; k < PARAM; k++)
+			mTmp[i][0] += n_AtWA[i][k] * AtWrB[k][0];
+	}*/
+
+	//double** rBeta = new double* [PARAM];
+	//for (int i = 0; i < PARAM; i++) {
+	//	rBeta[i] = new double[1];
+	//	rBeta[i][0] = beta[i][0] - mTmp[i][0];
+	//	B.push_back(rBeta[i][0]);
+	//}
+
+	std::cout << beta[0] << '\t' << B[0] << '\n';
+
+	//if (B[0] != B[0]) {
+	//	for (int i = 0; i < 40; ++i) {
+	//		for (int j = 0; j < 1; ++j)
+	//			std::cout << rB[i][j] << " ";
+	//		std::cout << '\n';
+	//	}
+	//	std::cout << '\n';	
+	//}
+
+
+	//if (B[0] != B[0]) {
+	//	for (int k = 0; k < 20; ++k) {
+	//		for (int i = 0; i < 4; ++i) {
+	//			for (int j = 0; j < 5; ++j)
+	//				std::cout << deriv[k].second[i][j] << ' ';
+	//			std::cout << '\n';
+	//		}
+	//		std::cout << '\n';
+	//	}
+	//}
+	
+	for (int i = 0; i < COUNT; ++i) {
+		delete[] A[i], W[i], r[i], rB[i];
 	}
+	delete[] A, W, r, rB;
 
-	double** rBeta = new double* [8];
-	for (int i = 0; i < 8; i++) {
-		rBeta[i] = new double[1];
-		rBeta[i][0] = beta[i][0] - mTmp[i][0];
-		B.push_back(rBeta[i][0]);
+	for (int i = 0; i < PARAM; ++i) {
+		delete[] At[i], AtW[i], AtWA[i], AtWrB[i];
 	}
-
-
+	delete[] At, AtW, AtWA, AtWrB;
 }
 
 void f(std::vector<Body>& body, std::vector<Body>& dot, double** ndxdp, double** dxdp) {
@@ -369,7 +482,8 @@ void f(std::vector<Body>& body, std::vector<Body>& dot, double** ndxdp, double**
 
 void fT(std::vector<Body>& body, std::vector<Body>& dot, double** ndxdp, double** dxdp, std::vector<double> B) {
 	double k1 = 6, k2 = 6, b1 = 0.05, b2 = 0.08;
-	coeff _c = { B[4],B[5],B[6],B[7] };
+	//coeff _c = { B[4],B[5],B[6],B[7] };
+	coeff _c = { B[4],k2,b1,b2 };
 	dot[0].x = body[0].v;
 	dot[0].v = (-_c.k1 * (body[0].x - l) - _c.b1 * body[0].v + _c.k2 * (body[1].x - body[0].x - l) + _c.b2 * body[1].v) / m1;
 	dot[1].x = body[1].v;
@@ -384,7 +498,7 @@ void step(std::vector<Body>& st, std::vector<Body>& body, std::vector<Body> k,  
 	}
 
 	for (int i = 0; i < 4; ++i)
-		for (int j = 0; j < 8; ++j)
+		for (int j = 0; j < PARAM; ++j)
 			ndxdp[i][j] = dxdp[i][j] + h / 2 * km[i][j];
 }
 
@@ -399,13 +513,13 @@ void RungeKutta(std::vector<Body>& body, double** dxdp, double h, void (*f)(std:
 		   **stm=new double*[4];
 	for (int i = 0; i < 4; ++i)
 	{
-		km1[i] = new double[8],
-		km2[i] = new double[8],
-		km3[i] = new double[8],
-		km4[i] = new double[8],
-		stm[i] = new double[8];
+		km1[i] = new double[PARAM],
+		km2[i] = new double[PARAM],
+		km3[i] = new double[PARAM],
+		km4[i] = new double[PARAM],
+		stm[i] = new double[PARAM];
 
-		for (int j = 0; j < 8; ++j)
+		for (int j = 0; j < PARAM; ++j)
 		{
 			km1[i][j] = 0;
 			km2[i][j] = 0;
@@ -438,8 +552,13 @@ void RungeKutta(std::vector<Body>& body, double** dxdp, double h, void (*f)(std:
 	}
 
 	for (int i = 0; i < 4; ++i)
-		for (int j = 0; j < 8; ++j)
+		for (int j = 0; j < PARAM; ++j)
 			dxdp[i][j] += ((km1[i][j] + km2[i][j] * 2 + km3[i][j] * 2 + km4[i][j]) * h / 6);
+
+	for (int i = 0; i < 4; ++i) {
+		delete[] km1[i], km2[i], km3[i], km4[i], stm[i];
+	}
+	delete[] km1, km2, km3, km4, stm;
 }
 
 void RungeKuttaT(std::vector<Body>& body, double** dxdp, double h, void (*fT)(std::vector<Body>&, std::vector<Body>&, double**, double**, std::vector<double> B), std::vector<double> B) {
@@ -451,13 +570,13 @@ void RungeKuttaT(std::vector<Body>& body, double** dxdp, double h, void (*fT)(st
 		** stm = new double* [4];
 	for (int i = 0; i < 4; ++i)
 	{
-		km1[i] = new double[8],
-			km2[i] = new double[8],
-			km3[i] = new double[8],
-			km4[i] = new double[8],
-			stm[i] = new double[8];
+			km1[i] = new double[5],
+			km2[i] = new double[5],
+			km3[i] = new double[5],
+			km4[i] = new double[5],
+			stm[i] = new double[5];
 
-		for (int j = 0; j < 8; ++j)
+		for (int j = 0; j < PARAM; ++j)
 		{
 			km1[i][j] = 0;
 			km2[i][j] = 0;
@@ -478,28 +597,37 @@ void RungeKuttaT(std::vector<Body>& body, double** dxdp, double h, void (*fT)(st
 	fT(body, k1, km1, dxdp,B);
 	step(st, body, k1, dxdp, km1, stm, h);
 	fT(st, k2, km2, stm, B);
+	//std::cout << "1----------\n";
 
 	step(st, body, k2, dxdp, km2, stm, h);
 	fT(st, k3, km3, stm, B);
-
+	//std::cout << "2----------\n";
 	step(st, body, k3, dxdp, km3, stm, h * 2);
 	fT(st, k4, km4, stm, B);
-
+	//std::cout << "3----------\n";
 	for (int i = 0; i < body.size(); ++i) {
 		body[i] = body[i] + ((k1[i] + k2[i] * 2 + k3[i] * 2 + k4[i]) * h / 6);
 	}
 
 	for (int i = 0; i < 4; ++i)
-		for (int j = 0; j < 8; ++j)
+		for (int j = 0; j < PARAM; ++j)
 			dxdp[i][j] += ((km1[i][j] + km2[i][j] * 2 + km3[i][j] * 2 + km4[i][j]) * h / 6);
+
+	for (int i = 0; i < 4; ++i) {
+		delete[] km1[i], km2[i], km3[i], km4[i], stm[i];
+	}
+	delete[] km1, km2, km3, km4, stm;
 }
 
 bool doubleEquals(CArray arr1, CArray arr2, CArray correctArr1, CArray correctArr2) {
-	double epsilon = 1006.7;
+	double epsilon = 100;
 	for (int i = 0; i < 20; i++) {
 		if (std::fabs(arr1[i].real() - correctArr1[i].real()) > epsilon || std::fabs(arr2[i].real() - correctArr2[i].real()) > epsilon)
 			return false;
 	}
+
+	/*for (int i = 0; i < 20; ++i)
+		std::cout << correctArr1[i].real() << ' ' << arr1[i].real() << " | " << correctArr2[i].real() << ' ' << arr2[i].real() << '\n';*/
 	return true;
 }
 
@@ -508,8 +636,8 @@ int main() {
 	double** dXdP = new double* [4];
 	for (int i = 0; i < 4; i++)
 	{
-		dXdP[i] = new double[8];
-		for (int j = 0; j < 8; ++j)
+		dXdP[i] = new double[PARAM];
+		for (int j = 0; j < PARAM; ++j)
 			if (i == j) dXdP[i][j] = 1;
 			else dXdP[i][j] = 0;
 	}
@@ -601,7 +729,7 @@ int main() {
 			if (canAdd)	correctPositions.push_back(std::make_pair(body[0].x, body[1].x));
 			deriv.push_back(std::make_pair(t, dXdP));
 			for (int i = 0; i < 4; ++i) {
-				for (int j = 0; j < 8; ++j)
+				for (int j = 0; j < PARAM; ++j)
 					matrix << dXdP[i][j] << " ";
 				matrix << '\n';
 			}
@@ -616,6 +744,7 @@ int main() {
 
 	file.close();
 	canAdd = false;
+	std::vector<Body> bodyT;
 	Complex correctArr1[20], correctArr2[20];
 	for (int i = 0; i < 20; i++)
 	{
@@ -624,12 +753,34 @@ int main() {
 	}
 	Complex arr1[20], arr2[20];
 	CArray data1, data2, correctData1, correctData2;
-	std::vector<double> B = {150,350,0,0,5.95,6.05,0.045,0.075};
+	std::vector<double> B = {150,350,0,0,5.8,6,0.05,0.08};
 	int k = 0;
+	bodyT = body;
+	std::vector<std::pair<double, double**>> derivTmp;
+	derivTmp = deriv;
 	while (true) {
-		std::vector<std::pair<double, double**>> derivTmp;
-		derivTmp = deriv;
-		GaussNewthon(body, derivTmp, B);
+
+		//for (int k = 0; k < 20; k++) {
+		//	for (int i = 0; i < 4; ++i) {
+		//		for (int j = 0; j < 5; j++)
+		//			std::cout << derivTmp[k].second[i][j] << " ";
+		//		std::cout << "\n";
+		//	}
+		//	std::cout << '\n';
+		//}
+		//std::cout << '\n';
+
+		//for (auto a : B)
+		//	std::cout << a << ' ';
+		//std::cout << "\n---------------------\n";
+
+		GaussNewthon(bodyT, derivTmp, B);
+
+		//for (auto a : B)
+		//	std::cout << a << ' ';
+		//std::cout << "\n\n";
+
+		 //if (k % 1 == 0) std::cout << "\\" << B[4] /*<< ' ' << B[5] << ' ' << B[6] << ' ' << B[7]*/ << '\n';
 		for (int i = 0; i < 20; i++)
 		{
 			arr1[i] = positions[i].first;
@@ -643,6 +794,7 @@ int main() {
 		fft(data2);
 		fft(correctData1);
 		fft(correctData2);
+		//std::cout << data1[0].real() << " " << data2[0].real() << " " << correctData1[0].real() << " " << correctData2[0].real() << '\n';
 		if (k != 0 && doubleEquals(data1, data2, correctData1, correctData2))
 			break;
 		double ta = 0;
@@ -650,26 +802,45 @@ int main() {
 		double** dXdPT = new double* [4];
 		for (int i = 0; i < 4; i++)
 		{
-			dXdPT[i] = new double[8];
-			for (int j = 0; j < 8; ++j)
+			dXdPT[i] = new double[PARAM];
+			for (int j = 0; j < PARAM; ++j)
 				if (i == j) dXdPT[i][j] = 1;
 				else dXdPT[i][j] = 0;
 		}
-		std::vector<Body> bodyT;
+
+		//for (int i = 0; i < 4; ++i) {
+		//	for (int j = 0; j < 5; j++)
+		//		std::cout << dXdPT[i][j] << " ";
+		//	std::cout << "\n";
+		//}
+		//std::cout << "----------\n";
+		bodyT.clear();
 		bodyT.push_back(Body(150, 0));
 		bodyT.push_back(Body(350, 0));
 		derivTmp.clear();
 		positions.clear();
+
+		//std::cout << k << "###############################\n";
 		while (ta <= 20) {
 			RungeKuttaT(bodyT, dXdPT, h, fT,B);
+
+
+			//for (int i = 0; i < 4; ++i) {
+			//	for (int j = 0; j < 5; j++)
+			//		std::cout << dXdPT[i][j] << " ";
+			//	std::cout << "\n";
+			//}
+			//std::cout << '\n';
 			ta += h;
 
 			if (ta - (int)ta > h) {
 				positions.push_back(std::make_pair(bodyT[0].x, bodyT[1].x));
-				derivTmp.push_back(std::make_pair(t, dXdPT));
+				derivTmp.push_back(std::make_pair(ta, dXdPT));
 			}
 		}
+		//if (dXdPT[0][0] != dXdPT[0][0]) std::cout << "First\n";
 	}
-	std::cout << B[4] << ' ' << B[5] << ' ' << B[6] << ' ' << B[7] << '\n';
+	std::cout << B[4] /*<< ' ' << B[5] << ' ' << B[6] << ' ' << B[7]*/ << '\n';
+	//std::cout << k << '\n';
 	return 0;
 }
