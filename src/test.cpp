@@ -51,6 +51,15 @@ private:
 	double* arr;
 	size_t col, row;
 public:
+	Matrix(double** arr, int r, int c) {
+		this->arr = new double[r * c];
+		row = r;
+		col = c;
+		for (int i = 0; i < r; ++i)
+			for (int j = 0; j < c; ++j)
+				this->arr[i * col + j] = arr[i][j];
+	}
+
 	Matrix(size_t row, size_t col, double v = 0) {
 		this->col = col;
 		this->row = row;
@@ -68,7 +77,14 @@ public:
 		for (int i = 0; i < row; ++i)
 			arr[i] = vec[i%(2*COUNT)];
 	}
-
+	void swapRows(int from, int to) {
+		double tmp;
+		for (int i = 0; i < col; ++i) {
+			tmp = arr[from * col + i];
+			arr[from * col + i] = arr[to * col + i];
+			arr[to * col + i] = tmp;
+		}
+	}
 	int getCol() const { return col; }
 	int getRow() const { return row; }
 	
@@ -91,6 +107,15 @@ public:
 		}
 		std::cout << '\n';
 	}
+	void print(const std::string path) {
+		std::ofstream file(path);
+		for (int i = 0; i < row; ++i) {
+			for (int j = 0; j < col; ++j)
+				file << arr[i * col + j] << ' ';
+			file << "\n";
+		}
+		file << '\n';
+	}
 
 	Matrix T() {
 		Matrix c(this->getCol(), this->getRow());
@@ -98,6 +123,18 @@ public:
 			for (int j = 0; j < c.getCol(); ++j)
 				c.set(i, j, (*this)(j,i));
 		return c;
+	}
+	Matrix& operator=(const Matrix& c) {
+		if (this != &c) {
+			delete[] arr;
+			this->col = c.col;
+			this->row = c.row;
+			arr = nullptr;
+			arr = new double[row * col];
+			for (int i = 0; i < row * col; ++i)
+				arr[i] = c.arr[i];
+		}
+		return *this;
 	}
 
 	Matrix operator+(const Matrix& a) const {
@@ -128,6 +165,12 @@ public:
 			for (int j = 0; j < c.getCol(); ++j)
 				for (int k = 0; k < a.getRow(); ++k)
 					c.add(i, j, (*this)(i, k) * a(k, j));
+		return c;
+	}
+	Matrix operator*(const double a) const {
+		Matrix c(getRow(),getCol());
+		for (int i = 0; i < row * col; ++i)
+			c.arr[i] *= a;
 		return c;
 	}
 };
@@ -264,54 +307,81 @@ void updateSystem(std::vector<Body> body, double** dxdp, double** ndxdp, coeff _
 
 }
 
-double** interpolate(double t, std::vector<std::pair<double,double**>> deriv) {
+Matrix interpolate(double t, std::vector<std::pair<double,Matrix>> deriv) {
 	for (int i = 0; i < deriv.size(); ++i)
 	{
 		if (std::fabs(deriv[i].first - t) <= 1.2)
 		{
-			double** Xt0 = deriv[i].second;
-			double** Xt1 = deriv[i + 1].second;
-
-			double** X = new double* [4];
-			for (int k = 0; k < 4; k++) {
-				X[k] = new double[PARAM];
-				for (int h = 0; h < PARAM; h++)
-					X[k][h] = 0;
-			}
+			Matrix Xt0 = deriv[i].second;
+			Matrix Xt1 = deriv[i + 1].second;
 
 
-			for (int j = 0; j < 4; j++)
-			{
-				for (int k = 0; k < PARAM; k++)
-					X[j][k] = Xt0[j][k] + (Xt1[j][k] - Xt0[j][k]) * ((t - deriv[i].first) / (deriv[i + 1].first - deriv[i].first));
-			}
+
+			Matrix X = Xt0 + (Xt1 - Xt0) * ((t - deriv[i].first) / (deriv[i + 1].first - deriv[i].first));
+			
 
 			return X;
 		}
 	}
+	
 }
 
 
-void gaussNewton(std::vector<Body> body, std::vector<std::pair<double, double**>> deriv, std::vector<double>& B, std::vector<double> r) {
+void LUP(Matrix A, Matrix& C, Matrix& P) {
+	//n - размерность исходной матрицы
+	const int n = A.getRow();
+
+	C = A;
+
+	//загружаем в матрицу P единичную матрицу
+	P = Matrix(n,n,1);
+
+	for (int i = 0; i < n; i++) {
+		//поиск опорного элемента
+		double pivotValue = 0;
+		int pivot = -1;
+		for (int row = i; row < n; row++) {
+			if (fabs(C(row,i)) > pivotValue) {
+				pivotValue = fabs(C(row,i));
+				pivot = row;
+			}
+		}
+		if (pivotValue != 0) {
+			//меняем местами i-ю строку и строку с опорным элементом
+			P.swapRows(pivot, i);
+			C.swapRows(pivot, i);
+			for (int j = i + 1; j < n; j++) {
+				C.set(j,i, C(j,i)/C(i,i));
+				for (int k = i + 1; k < n; k++)
+					C.set(j,k, C(j,k)-C(j,i) * C(i,k));
+			}
+		}
+	}
+}
+
+void gaussNewton(std::vector<Body> body, std::vector<std::pair<double, Matrix>> deriv, std::vector<double>& B, std::vector<double> r) {
 	std::vector<double> old_B;
 	for (auto a : B)
 		old_B.push_back(a);
 	B.clear();
-	Matrix A(4 * COUNT, PARAM);
-	Matrix W(4 * COUNT, 4 * COUNT,1);
+	Matrix A(2 * COUNT, PARAM);
+	Matrix W(2 * COUNT, 2 * COUNT,1);
 	int it = 0;
-	for (int i = 0; i < 4 * COUNT;)
+	for (int i = 0; i < 2 * COUNT;)
 	{
-		double** tmp = interpolate(deriv[it].first, deriv);
-		for (int k = 0; k < 4; k++) {
+		Matrix tmp = interpolate(deriv[it].first, deriv);
+		for (int k = 0; k < 2; k++) {
 			for (int j = 0; j < PARAM; ++j)
 			{
-				A.set(i, j, tmp[k][j]);
+				A.set(i, j, tmp(k,j));
 			}
 			i++;
 		}
 		it++;
 	}
+
+	A.print("A.txt");
+	W.print("W.txt");
 
 	Matrix At = A.T();
 
@@ -319,11 +389,11 @@ void gaussNewton(std::vector<Body> body, std::vector<std::pair<double, double**>
 	Matrix AtWA = AtW * A;
 	Matrix rB(r);
 	Matrix AtWrB = AtW * rB;
-
+	AtWA.print("AtWA.txt");
 	Matrix L(PARAM, PARAM);
 
-	W.print();
-	
+	//W.print();
+	//
 	for (int i = 0; i < L.getCol(); ++i) {
 		double s = AtWA(i, i);
 		for (int k = 0; k < i - 1; ++k)
@@ -342,17 +412,37 @@ void gaussNewton(std::vector<Body> body, std::vector<std::pair<double, double**>
 	double* y = new double[PARAM];
 	double* x = new double[PARAM];
 
+
+	/// LUP 
+	//Matrix P(PARAM, PARAM), C(PARAM, PARAM);
+	//LUP(AtWA, C, P);
+	//Matrix L(PARAM, PARAM, 1), U(PARAM,PARAM);
+	//for (int i = 0; i < L.getRow(); ++i)
+	//	for(int j = 0; j < i; ++j) {
+	//		L.set(i, j, C(i, j));
+	//}
+	//for (int i = 0; i < U.getRow(); ++i)
+	//	for (int j = i; j < U.getCol(); ++j) {
+	//		U.set(i, j, C(i, j));
+	//	}
+	//Matrix LU = L * U;
+
+	Matrix Pb = AtWrB;
+	//L.print();
+	//U.print();
+	//Pb.print();
+
 	for (int i = 0; i < PARAM; ++i) {
 		double sum = 0;
 		for (int k = 0; k < i; ++k)
-			sum += L(i,k) * y[k];
-		y[i] = 1.0 / L(i,i) * (AtWrB(i,0) - sum);
+			sum += L(i, k) * y[k];
+		y[i] = 1.0 / L(i, i) * (Pb(i, 0) - sum);
 	}
 
 	for (int i = PARAM - 1; i >= 0; i--) {
 		double sum = 0;
 		for (int k = i + 1; k < PARAM; ++k)
-			sum += Lt(i,k) * x[k];
+			sum += Lt(i, k) * x[k];
 		x[i] = y[i] - sum;
 	}
 
@@ -821,7 +911,7 @@ int main() {
 			if (i == j) dXdP[i][j] = 1;
 			else dXdP[i][j] = 0;
 	}
-	std::ofstream matrix("matrix.txt");
+	std::ofstream matr("matrix.txt");
 
 	sf::RenderWindow win(sf::VideoMode(980, 720), "Window");
 	win.setFramerateLimit(60);
@@ -876,7 +966,7 @@ int main() {
 	sf::View view = win.getDefaultView();
 	view.setCenter(300, 0);
 	win.setView(view);
-	std::vector<std::pair<double, double**>> deriv;
+	std::vector<std::pair<double, Matrix>> deriv;
 	while (win.isOpen()) {
 		sf::Event e;
 		while (win.pollEvent(e)) {
@@ -911,13 +1001,14 @@ int main() {
 			file << t << " " << body[0].x << " " << body[1].x << '\n';
 			positions.push_back(std::make_pair(body[0].x, body[1].x));
 			if (canAdd)	correctPositions.push_back(std::make_pair(body[0].x, body[1].x));
-			deriv.push_back(std::make_pair(t, dXdP));
-			for (int i = 0; i < 4; ++i) {
-				for (int j = 0; j < PARAM; ++j)
-					matrix << dXdP[i][j] << " ";
-				matrix << '\n';
-			}
-			matrix << '\n';
+			Matrix tmp(dXdP,4,PARAM);
+			deriv.push_back(std::make_pair(t, tmp));
+			//for (int i = 0; i < 4; ++i) {
+			//	for (int j = 0; j < PARAM; ++j)
+			//		matr << tmp[i][j] << " ";
+			//	matr << '\n';
+			//}
+			//matr << '\n';
 		}
 		
 		win.display();
@@ -940,7 +1031,7 @@ int main() {
 	std::vector<double> B = {150,350,0,0,5.85,6,0.05,0.08};
 	int k = 0;
 	bodyT = body;
-	std::vector<std::pair<double, double**>> derivTmp;
+	std::vector<std::pair<double, Matrix>> derivTmp;
 	derivTmp = deriv;
 	std::vector<double> r;
 	while (true) {
@@ -960,6 +1051,15 @@ int main() {
 		//for (auto a : B)
 		//	std::cout << a << ' ';
 		//std::cout << "\n---------------------\n";
+
+		//for (int k = 0; k < 20; ++k) {
+		//	for (int i = 0; i < 4; ++i) {
+		//		for (int j = 0; j < PARAM; ++j)
+		//			std::cout << derivTmp[k].second(i,j) << ' ';
+		//		std::cout << '\n';
+		//	}
+		//	std::cout << '\n';
+		//}
 
 		gaussNewton(bodyT, derivTmp, B,r);
 
@@ -1026,9 +1126,14 @@ int main() {
 				observations.push_back(bodyT[0].x);
 				observations.push_back(bodyT[1].x);
 				positions.push_back(std::make_pair(bodyT[0].x, bodyT[1].x));
-				derivTmp.push_back(std::make_pair(ta, dXdPT));
+				Matrix tmp(dXdPT,4,PARAM);
+				derivTmp.push_back(std::make_pair(ta, tmp));
 			}
+
 		}
+
+
+		
 		char a = 'a';
 		//if (dXdPT[0][0] != dXdPT[0][0]) std::cout << "First\n";
 	}
