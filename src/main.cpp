@@ -10,7 +10,7 @@
 const double m1 = 2, m2 = 2;
 const double l = 100.0;
 
-const int PARAM = 1;
+const int PARAM = 4;
 const int COUNT = 64;
 const int STEP = 5;
 
@@ -274,10 +274,10 @@ void updateSystem(std::vector<Body> body, double** dxdp, double** ndxdp, coeff _
 	//};
 	double dFdp[4][PARAM] =
 	{
-	{0},
-	{0},
-	{0},
-	{0}
+	{0,0,0,0},
+	{0,0,0,0},
+	{0,0,0,0},
+	{0,0,0,0}
 	};
 	double dFdX[4][4] =
 	{
@@ -775,8 +775,8 @@ void f(std::vector<Body>& body, std::vector<Body>& dot, double** ndxdp, double**
 
 void fT(std::vector<Body>& body, std::vector<Body>& dot, double** ndxdp, double** dxdp, std::vector<double> B) {
 	double k1 = 6, k2 = 6, b1 = 0.05, b2 = 0.08;
-	coeff _c = { B[4],B[5],B[6],B[7] };
-	//coeff _c = { k1,k2,b1,b2 };
+	//coeff _c = { B[4],B[5],B[6],B[7] };
+	coeff _c = { k1,k2,b1,b2 };
 	dot[0].x = body[0].v;
 	dot[0].v = (-_c.k1 * (body[0].x - l) - _c.b1 * body[0].v + _c.k2 * (body[1].x - body[0].x - l) + _c.b2 * body[1].v) / m1;
 	dot[1].x = body[1].v;
@@ -913,7 +913,7 @@ void RungeKuttaT(std::vector<Body>& body, double** dxdp, double h, void (*fT)(st
 }
 
 bool doubleEquals(CArray arr1, CArray arr2, CArray correctArr1, CArray correctArr2) {
-	double epsilon = 0.01;
+	double epsilon = 0.2;
 	for (int i = 0; i < COUNT; i++) {
 		if (std::fabs(arr1[i].real() - correctArr1[i].real()) > epsilon || std::fabs(arr2[i].real() - correctArr2[i].real()) > epsilon)
 			return false;
@@ -1055,7 +1055,7 @@ int main() {
 	}
 	Complex arr1[COUNT], arr2[COUNT];
 	CArray data1, data2, correctData1, correctData2;
-	std::vector<double> B = { 150,350,0,0,6.2,5.8,0.045,0.085 };
+	std::vector<double> B = { 145,355,2,3,6,6,0.05,0.08 };
 	int k = 0;
 	bodyT = body;
 	std::vector<std::pair<double, Matrix>> derivTmp;
@@ -1098,6 +1098,7 @@ int main() {
 		//std::cout << "\n\n";
 
 		if (k % 1 == 0) {
+			std::cout << "Debug: ";
 			for (int i = 0; i < PARAM; ++i)
 				std::cout << B[i] << ' ';
 			std::cout << '\n';
@@ -1130,14 +1131,15 @@ int main() {
 		}
 
 		//for (int i = 0; i < 4; ++i) {
+		//	std::cout << "Debug: ";
 		//	for (int j = 0; j < 5; j++)
 		//		std::cout << dXdPT[i][j] << " ";
 		//	std::cout << "\n";
 		//}
 		//std::cout << "----------\n";
 		bodyT.clear();
-		bodyT.push_back(Body(B[0], 0));
-		bodyT.push_back(Body(350, 0));
+		bodyT.push_back(Body(B[0], B[2]));
+		bodyT.push_back(Body(B[1], B[3]));
 		derivTmp.clear();
 		positions.clear();
 		r.clear();
